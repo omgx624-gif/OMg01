@@ -1,0 +1,20 @@
+(request, 'ออเดอร์นี้ยังไม่มีรายการอาหาร ไม่สามารถชำระเงินได้')
+        return redirect('order_detail', pk=order.pk)
+
+    store = StoreLocation.get_setting()
+    qr_enabled = bool(store.promptpay_id)
+    form = CustomerQRPaymentForm(request.POST or None, request.FILES or None, instance=order)
+
+    if request.method == 'POST':
+        method = (
+            request.POST.get('method')
+            or request.POST.get('payment_method')
+            or request.POST.get('pay_method')
+            or ''
+        ).strip()
+        # ลูกค้าสามารถเลือกวิธีชำระได้หลายทาง (ไม่จำกัดเฉพาะ QR)
+        if method not in dict(Order.PAYMENT_METHODS):
+            messages.error(request, 'กรุณาเลือกวิธีชำระเงินก่อนยืนยัน')
+            return redirect('order_pay_qr', pk=order.pk)
+        if method == 'qr' and not qr_enabled:
+            messages.error(request, 'ร้านยังไม่ได้ตั้งค่า PromptPay ID จึงไม่สามารถชำระด

@@ -1,0 +1,32 @@
+    if request.method == 'POST':
+        method = (
+            request.POST.get('method')
+            or request.POST.get('payment_method')
+            or request.POST.get('pay_method')
+            or ''
+        ).strip()
+        # ลูกค้าสามารถเลือกวิธีชำระได้หลายทาง (ไม่จำกัดเฉพาะ QR)
+        if method not in dict(Order.PAYMENT_METHODS):
+            messages.error(request, 'กรุณาเลือกวิธีชำระเงินก่อนยืนยัน')
+            return redirect('order_pay_qr', pk=order.pk)
+        if method == 'qr' and not qr_enabled:
+            messages.error(request, 'ร้านยังไม่ได้ตั้งค่า PromptPay ID จึงไม่สามารถชำระด้วย QR ได้')
+            return redirect('order_pay_qr', pk=order.pk)
+        form = CustomerQRPaymentForm(
+            request.POST, request.FILES, instance=order,
+            require_slip=(method == 'transfer'),
+        )
+        if form.is_valid():
+            order = form.save(commit=False)
+            order.payment_method = method
+            order.qr_payment_requested_at = timezone.now()
+            order.save()
+            # แจ้งพนักงาน/ระบบ
+            try:
+                from .automation import notify
+                notify(
+                    'payment',
+                    f'แจ้งชำระ {order.get_payment_method_display()} {order.display_code}',
+                    f'{order.table_display} ยอด {order.discounted_total} บาท ลูกค้าแจ้งชำระผ่าน '
+                    f'{order.get_payment_method_display()} แล้ว'
+                    + (f' (อ้างอิง: {order.qr_payment_reference})' if

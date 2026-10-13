@@ -1,0 +1,69 @@
+class UserCreateForm(_UserBaseForm):
+    """ฟอร์มสร้างผู้ใช้ใหม่ (ต้องตั้งรหัสผ่าน)"""
+
+    password1 = forms.CharField(
+        label='รหัสผ่าน',
+        strip=False,
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': '••••••••'}),
+    )
+    password2 = forms.CharField(
+        label='ยืนยันรหัสผ่าน',
+        strip=False,
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'กรอกรหัสผ่านซ้ำอีกครั้ง'}),
+    )
+
+    def clean_password1(self):
+        password = self.cleaned_data.get('password1')
+        if password:
+            validate_password(password)
+        return password
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get('password1') != cleaned_data.get('password2'):
+            self.add_error('password2', 'รหัสผ่านทั้งสองช่องไม่ตรงกัน')
+        return cleaned_data
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data['password1'])
+        if commit:
+            user.save()
+            self._save_profile(user)
+        return user
+
+
+class UserUpdateForm(_UserBaseForm):
+    """ฟอร์มแก้ไขผู้ใช้ (รหัสผ่านเว้นว่างไว้ได้ = ไม่เปลี่ยน)"""
+
+    new_password = forms.CharField(
+        label='รหัสผ่านใหม่',
+        required=False,
+        strip=False,
+        help_text='เว้นว่างไว้ = ไม่เปลี่ยนรหัสผ่านเดิม',
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'เว้นว่างถ้าไม่ต้องการเปลี่ยน'}),
+    )
+
+    def clean_new_password(self):
+        password = self.cleaned_data.get('new_password')
+        if password:
+            validate_password(password)
+        return password
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        new_password = self.cleaned_data.get('new_password')
+        if new_password:
+            user.set_password(new_password)
+        if commit:
+            user.save()
+            self._save_profile(user)
+        return user
+
+
+# ======================================================================
+# ระบบคูปอง / โปรโมชั่น
+# ======================================================================
+
+
+class CouponForm(forms.ModelForm)

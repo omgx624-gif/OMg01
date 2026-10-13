@@ -1,0 +1,50 @@
+"""ผู้ใช้: รายชื่อ, โปรไฟล์, สร้าง/แก้ไข, การแจ้งเตือน"""
+
+from ._common import *  # noqa: F403
+
+
+@staff_required
+def user_list(request):
+    """รายชื่อผู้ใช้ทั้งหมด + ค้นหา + แบ่งหน้า"""
+    query = request.GET.get('q', '').strip()
+
+    users = User.objects.select_related('profile').all().order_by('-date_joined')
+    if query:
+        users = users.filter(
+            Q(username__icontains=query)
+            | Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(email__icontains=query)
+        )
+
+    paginator = Paginator(users, 10)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    context = {
+        'page_obj': page_obj,
+        'query': query,
+        'total_users': paginator.count,
+    }
+    return render(request, 'user/user_list.html', context)
+
+
+@staff_required
+def user_profile_detail(request, pk):
+    """ดูโปรไฟล์ผู้ใช้ (เฉพาะ Staff) + อัปโหลดรูปโปรไฟล์"""
+    target = get_object_or_404(User.objects.select_related('profile'), pk=pk)
+    profile, _ = Profile.objects.get_or_create(user=target)
+
+    avatar_form = UserAvatarForm(instance=profile)
+    cover_form = UserCoverForm(instance=profile)
+
+    if request.method == 'POST' and 'avatar_submit' in request.POST:
+        avatar_form = UserAvatarForm(request.POST, request.FILES, instance=profile)
+        if avatar_form.is_valid():
+            avatar_form.save()
+            messages.success(request, f'อัปโหลดรูปโปรไฟล์ของ "{target.username}" เรียบร้อยแล้ว')
+            return redirect('user_profile_detail', pk=target.pk)
+        else:
+            messages.error(request, 'กรุณาตรวจสอบไฟล์รูปภาพ')
+    elif request.method == 'POST' and 'cover_submit' in request.POST:
+        cover_form = UserCoverForm(request.POST, request.FILES, instance=profile)
+        if cover_form.

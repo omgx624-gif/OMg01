@@ -1,0 +1,16 @@
+    def __init__(self, *args, can_set_staff=False, **kwargs):
+        # can_set_staff=True เฉพาะตอนที่ผู้เรียกเป็น superuser —
+        # staff ทั่วไปจะไม่เห็น/ตั้งค่า is_staff ไม่ได้เลย (กันยกระดับสิทธิ์)
+        self.can_set_staff = can_set_staff
+        super().__init__(*args, **kwargs)
+        if not can_set_staff:
+            self.fields.pop('is_staff', None)
+        if self.instance and self.instance.pk:
+            try:
+                profile = self.instance.profile
+                self.fields['membership_status'].initial = profile.membership_status
+            except Profile.DoesNotExist:
+                pass
+
+    def clean_avatar(self):
+        # ขนาด/ประเภทไฟ

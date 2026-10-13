@@ -1,0 +1,44 @@
+class _UserBaseForm(forms.ModelForm):
+    """ฟอร์มพื้นฐานข้อมูลผู้ใช้ (ใช้ร่วมกันระหว่างสร้าง/แก้ไข)"""
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active']
+        labels = {
+            'username': 'ชื่อผู้ใช้',
+            'first_name': 'ชื่อจริง',
+            'last_name': 'นามสกุล',
+            'email': 'อีเมล',
+            'is_staff': 'สถานะผู้ดูแลระบบ (Staff)',
+            'is_active': 'เปิดใช้งานบัญชี',
+        }
+        widgets = {
+            'username': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'ภาษาอังกฤษ ตัวเลข หรือ @ . + - เท่านั้น',
+            }),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'name@example.com'}),
+            'is_staff': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    avatar = forms.ImageField(
+        label='รูปโปรไฟล์',
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+        # ฟิลด์ประกาศเองบนฟอร์ม User (ไม่ใช่ field ของโมเดล) จึงต้องผูก
+        # validator ตรงนี้ — จุดอื่น (Profile.avatar/cover/menu image) ผูกที่โมเดล
+        validators=[validate_image_file],
+    )
+
+    membership_status = forms.ChoiceField(
+        choices=Profile.MEMBERSHIP_CHOICES,
+        label='สถานะสมาชิก',
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
+    def __init__(self, *args, can_set_staff=False, **kwargs):
+        # can_s
